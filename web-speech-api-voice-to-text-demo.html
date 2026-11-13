@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Voice-to-Text Transcriber — Multi-Engine Demo</title>
+  <title>Voice-to-Text Transcriber — 4-Engine Audio Lab</title>
   <!-- Load Tailwind CSS for clean, modern, responsive styling -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Load Inter font for high legibility -->
@@ -70,12 +70,44 @@
       outline-offset: 2px;
     }
 
+    /* Scrollable tablist edge fades per modern-web-guidance tabs Strategy 1 */
+    @property --fade-start {
+      syntax: "<length>";
+      inherits: false;
+      initial-value: 0px;
+    }
+
+    @property --fade-end {
+      syntax: "<length>";
+      inherits: false;
+      initial-value: 0px;
+    }
+
+    @keyframes reveal-fade-start {
+      to {
+        --fade-start: var(--fade-size);
+      }
+    }
+
+    @keyframes hide-fade-end {
+      from {
+        --fade-end: var(--fade-size);
+      }
+    }
+
     /* Tablist & Tab styling from aria-selected (no dimension/font-weight changes on selection) */
     .tablist-scroller {
       display: flex;
       overflow-x: auto;
       scroll-snap-type: inline proximity;
+      --fade-size: 2.5rem;
+      scroll-padding-inline: var(--fade-size);
       border-bottom: 1px solid #e2e8f0;
+      scrollbar-width: none;
+    }
+
+    .tablist-scroller::-webkit-scrollbar {
+      display: none;
     }
 
     .tablist-scroller[hidden] {
@@ -91,7 +123,7 @@
     }
 
     [role="tab"]:hover {
-      color: #1e293b;
+      color: #1e2330;
     }
 
     [role="tab"][aria-selected="true"] {
@@ -122,18 +154,18 @@
 <body class="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-center p-4 sm:p-6">
 
   <!-- Main Card Container -->
-  <main class="w-full max-w-3xl bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/80 overflow-hidden">
+  <main class="w-full max-w-4xl bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/80 overflow-hidden">
     
     <!-- Header Bar -->
     <header class="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Multi-Engine Audio Lab</span>
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">4-Engine Audio Transcription Lab</span>
         </div>
         <h1 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">Voice-to-Text Transcriber</h1>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Compare browser-native <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-xs">SpeechRecognition</code> &amp; Groq's Free Dedicated Whisper API side by side
+          Compare Browser <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-xs">SpeechRecognition</code>, Groq Whisper, Google Gemini API &amp; In-Browser Whisper
         </p>
       </div>
 
@@ -171,7 +203,7 @@
     <section aria-labelledby="methods-heading" class="px-6 pt-5 pb-4 sm:px-8 border-b border-slate-100 bg-slate-50/40">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 id="methods-heading" class="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Transcription Methods (Multi-Select)
+          Transcription Methods (Select One or More)
         </h2>
         <span id="methods-summary-badge" class="text-xs font-medium text-slate-500">
           1 method active (single view)
@@ -194,11 +226,11 @@
             <div class="flex flex-wrap items-center justify-between gap-1.5">
               <span class="text-sm font-bold text-slate-900">Browser Web Speech API</span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                100% Client-Side
+                Real-Time Stream • $0.00
               </span>
             </div>
             <p class="mt-1 text-xs text-slate-600 leading-relaxed">
-              Streams real-time interim and finalized text continuously as you speak using native <code class="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">SpeechRecognition</code>.
+              Streams interim and finalized text continuously as you speak using native browser <code class="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">SpeechRecognition</code>.
             </p>
           </div>
         </label>
@@ -217,11 +249,57 @@
             <div class="flex flex-wrap items-center justify-between gap-1.5">
               <span class="text-sm font-bold text-slate-900">Free Dedicated Whisper API</span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                Groq Free Tier • $0.00
+                Groq Free Tier • &lt;300 ms
               </span>
             </div>
             <p class="mt-1 text-xs text-slate-600 leading-relaxed">
-              Standing free tier (20 req/min, 2,000 req/day, 8 hrs/day audio). Auto-detects ~99 languages in &lt;300 ms.
+              Standing free tier (20 req/min, 2,000 req/day, 8 hrs/day audio at $0.00). Auto-detects ~99 languages.
+            </p>
+          </div>
+        </label>
+
+        <!-- Choice Card 3: Google AI Studio — Gemini API -->
+        <label
+          for="method-gemini-api"
+          class="choice-card rounded-2xl bg-white p-4 cursor-pointer flex items-start gap-3.5 shadow-sm"
+        >
+          <input
+            id="method-gemini-api"
+            type="checkbox"
+            class="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+          />
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
+              <span class="text-sm font-bold text-slate-900">Google AI Studio — Gemini API</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-100">
+                Flash-Lite Free Tier • $0.00
+              </span>
+            </div>
+            <p class="mt-1 text-xs text-slate-600 leading-relaxed">
+              Multimodal audio transcription via Google AI Studio's free tier (25 tokens/sec audio) with structured JSON language detection.
+            </p>
+          </div>
+        </label>
+
+        <!-- Choice Card 4: In-Browser Whisper (Transformers.js WebGPU / WASM) -->
+        <label
+          for="method-browser-whisper"
+          class="choice-card rounded-2xl bg-white p-4 cursor-pointer flex items-start gap-3.5 shadow-sm"
+        >
+          <input
+            id="method-browser-whisper"
+            type="checkbox"
+            class="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+          />
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
+              <span class="text-sm font-bold text-slate-900">In-Browser Whisper (ONNX)</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/70">
+                100% On-Device • No Key
+              </span>
+            </div>
+            <p class="mt-1 text-xs text-slate-600 leading-relaxed">
+              Runs OpenAI Whisper locally inside your browser via Transformers.js (WebGPU / WASM) with zero external API calls.
             </p>
           </div>
         </label>
@@ -233,7 +311,6 @@
         class="hidden mt-3.5 rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-sm transition"
       >
         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-          <!-- Groq API Key Input -->
           <div class="sm:col-span-6">
             <div class="flex items-center justify-between mb-1">
               <label for="groq-api-key" class="text-xs font-semibold text-slate-700">
@@ -245,7 +322,7 @@
                 rel="noopener noreferrer"
                 class="text-[11px] font-semibold text-indigo-600 hover:underline"
               >
-                Get free key &rarr;
+                Get free Groq key &rarr;
               </a>
             </div>
             <div class="relative flex items-center">
@@ -257,7 +334,7 @@
                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-16 text-xs sm:text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
               <button
-                id="toggle-key-visibility"
+                id="toggle-groq-key-visibility"
                 type="button"
                 class="absolute right-2 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
               >
@@ -266,10 +343,9 @@
             </div>
           </div>
 
-          <!-- Groq Whisper Model Selector -->
           <div class="sm:col-span-6">
             <label for="groq-model-select" class="block text-xs font-semibold text-slate-700 mb-1">
-              Whisper Model
+              Groq Whisper Model
             </label>
             <div class="relative">
               <select
@@ -286,6 +362,108 @@
                 </svg>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google AI Studio Gemini Configuration Bar -->
+      <div
+        id="gemini-config-panel"
+        class="hidden mt-3 rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-sm transition"
+      >
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div class="sm:col-span-6">
+            <div class="flex items-center justify-between mb-1">
+              <label for="gemini-api-key" class="text-xs font-semibold text-slate-700">
+                Google AI Studio Key <span class="font-normal text-slate-400">(localStorage)</span>
+              </label>
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-[11px] font-semibold text-indigo-600 hover:underline"
+              >
+                Get free AI Studio key &rarr;
+              </a>
+            </div>
+            <div class="relative flex items-center">
+              <input
+                id="gemini-api-key"
+                type="password"
+                autocomplete="off"
+                placeholder="AIzaSy..."
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-16 text-xs sm:text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+              <button
+                id="toggle-gemini-key-visibility"
+                type="button"
+                class="absolute right-2 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
+              >
+                Show
+              </button>
+            </div>
+          </div>
+
+          <div class="sm:col-span-6">
+            <label for="gemini-model-select" class="block text-xs font-semibold text-slate-700 mb-1">
+              Google Gemini Model
+            </label>
+            <div class="relative">
+              <select
+                id="gemini-model-select"
+                aria-label="Google Gemini model"
+                class="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-8 text-xs sm:text-sm font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+              >
+                <option value="gemini-2.5-flash-lite" selected>gemini-2.5-flash-lite (Fastest • Highest Free Quota)</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash (Balanced Multimodal)</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash (Standard Multimodal)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-Browser Whisper Configuration Bar -->
+      <div
+        id="browser-whisper-config-panel"
+        class="hidden mt-3 rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-sm transition"
+      >
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+          <div class="sm:col-span-7">
+            <label for="browser-whisper-model-select" class="block text-xs font-semibold text-slate-700 mb-1">
+              On-Device Whisper Model (Cached in Browser IndexedDB)
+            </label>
+            <div class="relative">
+              <select
+                id="browser-whisper-model-select"
+                aria-label="In-Browser Whisper model"
+                class="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-8 text-xs sm:text-sm font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+              >
+                <option value="onnx-community/whisper-tiny" selected>onnx-community/whisper-tiny (~40 MB • Multilingual)</option>
+                <option value="onnx-community/whisper-base">onnx-community/whisper-base (~75 MB • Higher Accuracy)</option>
+                <option value="onnx-community/whisper-tiny.en">onnx-community/whisper-tiny.en (~40 MB • English Fast)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="sm:col-span-5 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+              <span id="webgpu-status-badge" class="inline-flex items-center px-2 py-0.5 rounded-md font-semibold bg-amber-50 text-amber-800 border border-amber-200/70">
+                WebGPU / WASM Ready
+              </span>
+            </div>
+            <p class="mt-1 text-[11px] text-slate-400">
+              First run downloads weights once from Hugging Face CDN; subsequent runs execute offline.
+            </p>
           </div>
         </div>
       </div>
@@ -412,6 +590,34 @@
             0w
           </span>
         </button>
+
+        <button
+          type="button"
+          role="tab"
+          id="tab-gemini-api"
+          data-method="gemini-api"
+          aria-selected="false"
+          class="px-3.5 py-2.5 text-xs sm:text-sm font-medium inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-t-lg"
+        >
+          <span>Google Gemini API</span>
+          <span id="tab-pill-gemini-api" class="px-1.5 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600">
+            0w
+          </span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          id="tab-browser-whisper"
+          data-method="browser-whisper"
+          aria-selected="false"
+          class="px-3.5 py-2.5 text-xs sm:text-sm font-medium inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-t-lg"
+        >
+          <span>In-Browser Whisper</span>
+          <span id="tab-pill-browser-whisper" class="px-1.5 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600">
+            0w
+          </span>
+        </button>
       </div>
 
       <!-- Tab Panels Stack (all panels share grid cell 1/1; styling lives on inner wrapper) -->
@@ -476,6 +682,68 @@
             ></textarea>
           </div>
         </div>
+
+        <!-- Panel 3: Google AI Studio — Gemini API -->
+        <div
+          role="tabpanel"
+          id="panel-gemini-api"
+          aria-labelledby="tab-gemini-api"
+          hidden="until-found"
+        >
+          <div class="panel-surface">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs font-medium text-slate-500">
+                Google AI Studio — Gemini Multimodal Audio (transcribes when you click <strong>Stop</strong>)
+              </span>
+              <div class="flex items-center gap-2.5">
+                <span id="badge-gemini-api" class="hidden text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200/70 px-2 py-0.5 rounded-md">
+                  Ready
+                </span>
+                <span id="word-count-gemini-api" class="text-xs text-slate-400 font-medium">
+                  0 words
+                </span>
+              </div>
+            </div>
+            <textarea
+              id="transcript-gemini-api"
+              aria-label="Google Gemini API Transcribed Text"
+              rows="6"
+              placeholder="Google Gemini multimodal transcript will appear here as soon as you stop recording…"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-base sm:text-lg leading-relaxed text-slate-800 placeholder:text-slate-400 shadow-inner transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Panel 4: In-Browser Whisper (Transformers.js) -->
+        <div
+          role="tabpanel"
+          id="panel-browser-whisper"
+          aria-labelledby="tab-browser-whisper"
+          hidden="until-found"
+        >
+          <div class="panel-surface">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs font-medium text-slate-500">
+                In-Browser Whisper ONNX via Transformers.js (runs 100% locally when you click <strong>Stop</strong>)
+              </span>
+              <div class="flex items-center gap-2.5">
+                <span id="badge-browser-whisper" class="hidden text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">
+                  Ready
+                </span>
+                <span id="word-count-browser-whisper" class="text-xs text-slate-400 font-medium">
+                  0 words
+                </span>
+              </div>
+            </div>
+            <textarea
+              id="transcript-browser-whisper"
+              aria-label="In-Browser Whisper Transcribed Text"
+              rows="6"
+              placeholder="In-Browser Whisper transcript will appear here after local on-device inference completes…"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-base sm:text-lg leading-relaxed text-slate-800 placeholder:text-slate-400 shadow-inner transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
+            ></textarea>
+          </div>
+        </div>
       </div>
 
       <!-- Action Buttons Row: Stop, Reset, and Copy -->
@@ -525,49 +793,88 @@
 
     <!-- Subtle Footer Tip -->
     <footer class="px-6 py-3.5 sm:px-8 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-      <span>Tip: Select both methods to compare live browser streaming against Groq Whisper in tabs.</span>
-      <span class="text-slate-400">Web Speech API + Groq Whisper v3</span>
+      <span>Tip: Select multiple engines to compare transcripts side by side in tabs (or select 1 for a clean single view).</span>
+      <span class="text-slate-400">Web Speech • Groq Whisper • Google Gemini • Local Whisper ONNX</span>
     </footer>
   </main>
 
   <script>
     /**
-     * Multi-Method Voice-to-Text Transcriber Demo
+     * 4-Engine Voice-to-Text Transcriber Demo
      * Supports:
      * 1. Browser Native Web Speech API (SpeechRecognition / webkitSpeechRecognition)
      * 2. Free Dedicated Whisper API via Groq's Free Tier (whisper-large-v3-turbo & whisper-large-v3)
+     * 3. Google AI Studio — Gemini API Free Tier (gemini-2.5-flash-lite, gemini-2.5-flash, gemini-2.0-flash)
+     * 4. In-Browser Whisper ONNX via Hugging Face Transformers.js (WebGPU / WASM)
      */
     (function () {
       const STORAGE_KEY_GROQ = 'groq_api_key';
+      const STORAGE_KEY_GEMINI = 'gemini_api_key';
       const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
-      // DOM References
+      const METHOD_LABELS = {
+        'web-speech': 'Browser Web Speech API',
+        'groq-whisper': 'Free Dedicated Whisper API (Groq)',
+        'gemini-api': 'Google AI Studio — Gemini API',
+        'browser-whisper': 'In-Browser Whisper (ONNX)',
+      };
+
+      // DOM References: Checkboxes & Config Panels
       const methodWebSpeechCb = document.getElementById('method-web-speech');
       const methodGroqWhisperCb = document.getElementById('method-groq-whisper');
+      const methodGeminiApiCb = document.getElementById('method-gemini-api');
+      const methodBrowserWhisperCb = document.getElementById('method-browser-whisper');
+
       const methodsSummaryBadge = document.getElementById('methods-summary-badge');
       const singleMethodLabel = document.getElementById('single-method-label');
 
       const groqConfigPanel = document.getElementById('groq-config-panel');
       const groqApiKeyInput = document.getElementById('groq-api-key');
-      const toggleKeyBtn = document.getElementById('toggle-key-visibility');
+      const toggleGroqKeyBtn = document.getElementById('toggle-groq-key-visibility');
       const groqModelSelect = document.getElementById('groq-model-select');
 
+      const geminiConfigPanel = document.getElementById('gemini-config-panel');
+      const geminiApiKeyInput = document.getElementById('gemini-api-key');
+      const toggleGeminiKeyBtn = document.getElementById('toggle-gemini-key-visibility');
+      const geminiModelSelect = document.getElementById('gemini-model-select');
+
+      const browserWhisperConfigPanel = document.getElementById('browser-whisper-config-panel');
+      const browserWhisperModelSelect = document.getElementById('browser-whisper-model-select');
+      const webgpuStatusBadge = document.getElementById('webgpu-status-badge');
+
+      // DOM References: Tabs & Panels
       const tablist = document.getElementById('transcript-tablist');
       const tabWebSpeech = document.getElementById('tab-web-speech');
       const tabGroqWhisper = document.getElementById('tab-groq-whisper');
+      const tabGeminiApi = document.getElementById('tab-gemini-api');
+      const tabBrowserWhisper = document.getElementById('tab-browser-whisper');
+
       const tabPillWebSpeech = document.getElementById('tab-pill-web-speech');
       const tabPillGroqWhisper = document.getElementById('tab-pill-groq-whisper');
+      const tabPillGeminiApi = document.getElementById('tab-pill-gemini-api');
+      const tabPillBrowserWhisper = document.getElementById('tab-pill-browser-whisper');
 
       const panelWebSpeech = document.getElementById('panel-web-speech');
       const panelGroqWhisper = document.getElementById('panel-groq-whisper');
+      const panelGeminiApi = document.getElementById('panel-gemini-api');
+      const panelBrowserWhisper = document.getElementById('panel-browser-whisper');
+
       const transcriptWebSpeech = document.getElementById('transcript-web-speech');
       const transcriptGroqWhisper = document.getElementById('transcript-groq-whisper');
+      const transcriptGeminiApi = document.getElementById('transcript-gemini-api');
+      const transcriptBrowserWhisper = document.getElementById('transcript-browser-whisper');
 
       const badgeWebSpeech = document.getElementById('badge-web-speech');
       const badgeGroqWhisper = document.getElementById('badge-groq-whisper');
+      const badgeGeminiApi = document.getElementById('badge-gemini-api');
+      const badgeBrowserWhisper = document.getElementById('badge-browser-whisper');
+
       const wordCountWebSpeech = document.getElementById('word-count-web-speech');
       const wordCountGroqWhisper = document.getElementById('word-count-groq-whisper');
+      const wordCountGeminiApi = document.getElementById('word-count-gemini-api');
+      const wordCountBrowserWhisper = document.getElementById('word-count-browser-whisper');
 
+      // DOM References: Controls
       const micBtn = document.getElementById('mic-btn');
       const micPulseRing = document.getElementById('mic-pulse-ring');
       const stopBtn = document.getElementById('stop-btn');
@@ -585,31 +892,46 @@
       const SpeechRecognitionAPI =
         window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      // State
-      let activeTabMethod = 'web-speech'; // 'web-speech' | 'groq-whisper'
+      // Update WebGPU badge status
+      webgpuStatusBadge.textContent = 'WASM CPU Ready / WebGPU Checked on Load';
+
+      // Application State
+      let activeTabMethod = 'web-speech';
       let isListening = false;
 
-      // Web Speech API state
+      // 1. Web Speech API state
       let recognition = null;
       let webSpeechActive = false;
       let userRequestedStop = false;
       let webFinalizedText = '';
       let webInterimText = '';
 
-      // Groq Whisper MediaRecorder state
+      // Shared MediaRecorder state for batch audio engines (Groq, Gemini, In-Browser Whisper)
       let mediaRecorder = null;
       let mediaStream = null;
       let audioChunks = [];
-      let groqRecordingActive = false;
+      let mediaRecordingActive = false;
+      let activeBatchEnginesForSession = [];
+
+      // 2. Groq Whisper state
       let groqTranscribing = false;
       let groqFinalizedText = '';
 
-      // Load saved Groq API key from localStorage
+      // 3. Google Gemini state
+      let geminiTranscribing = false;
+      let geminiFinalizedText = '';
+
+      // 4. In-Browser Whisper state
+      let browserWhisperTranscribing = false;
+      let browserWhisperFinalizedText = '';
+      const loadedPipelines = {};
+
+      // Restore API keys from localStorage
       try {
-        const savedKey = localStorage.getItem(STORAGE_KEY_GROQ);
-        if (savedKey) {
-          groqApiKeyInput.value = savedKey;
-        }
+        const savedGroqKey = localStorage.getItem(STORAGE_KEY_GROQ);
+        if (savedGroqKey) groqApiKeyInput.value = savedGroqKey;
+        const savedGeminiKey = localStorage.getItem(STORAGE_KEY_GEMINI);
+        if (savedGeminiKey) geminiApiKeyInput.value = savedGeminiKey;
       } catch (err) {
         console.warn('Unable to read localStorage:', err);
       }
@@ -622,10 +944,24 @@
         }
       });
 
-      toggleKeyBtn.addEventListener('click', () => {
+      geminiApiKeyInput.addEventListener('input', () => {
+        try {
+          localStorage.setItem(STORAGE_KEY_GEMINI, geminiApiKeyInput.value.trim());
+        } catch (err) {
+          console.warn('Unable to write localStorage:', err);
+        }
+      });
+
+      toggleGroqKeyBtn.addEventListener('click', () => {
         const isPassword = groqApiKeyInput.type === 'password';
         groqApiKeyInput.type = isPassword ? 'text' : 'password';
-        toggleKeyBtn.textContent = isPassword ? 'Hide' : 'Show';
+        toggleGroqKeyBtn.textContent = isPassword ? 'Hide' : 'Show';
+      });
+
+      toggleGeminiKeyBtn.addEventListener('click', () => {
+        const isPassword = geminiApiKeyInput.type === 'password';
+        geminiApiKeyInput.type = isPassword ? 'text' : 'password';
+        toggleGeminiKeyBtn.textContent = isPassword ? 'Hide' : 'Show';
       });
 
       function showAlert(type, title, message) {
@@ -673,8 +1009,17 @@
         const selected = [];
         if (methodWebSpeechCb.checked) selected.push('web-speech');
         if (methodGroqWhisperCb.checked) selected.push('groq-whisper');
+        if (methodGeminiApiCb.checked) selected.push('gemini-api');
+        if (methodBrowserWhisperCb.checked) selected.push('browser-whisper');
         return selected;
       }
+
+      const TAB_ITEMS = [
+        { id: 'web-speech', tab: tabWebSpeech, panel: panelWebSpeech, textarea: transcriptWebSpeech },
+        { id: 'groq-whisper', tab: tabGroqWhisper, panel: panelGroqWhisper, textarea: transcriptGroqWhisper },
+        { id: 'gemini-api', tab: tabGeminiApi, panel: panelGeminiApi, textarea: transcriptGeminiApi },
+        { id: 'browser-whisper', tab: tabBrowserWhisper, panel: panelBrowserWhisper, textarea: transcriptBrowserWhisper },
+      ];
 
       /**
        * Selects a tab and updates panel visibility using hidden="until-found" for inactive tabs.
@@ -686,25 +1031,17 @@
         }
         activeTabMethod = method;
 
-        const tabs = [
-          { id: 'web-speech', tab: tabWebSpeech, panel: panelWebSpeech },
-          { id: 'groq-whisper', tab: tabGroqWhisper, panel: panelGroqWhisper },
-        ];
-
         const showTabs = selectedMethods.length > 1;
         tablist.hidden = !showTabs;
 
         if (selectedMethods.length === 1) {
           singleMethodLabel.classList.remove('hidden');
-          singleMethodLabel.textContent =
-            selectedMethods[0] === 'web-speech'
-              ? 'Browser Web Speech API'
-              : 'Free Dedicated Whisper API (Groq)';
+          singleMethodLabel.textContent = METHOD_LABELS[selectedMethods[0]] || '';
         } else {
           singleMethodLabel.classList.add('hidden');
         }
 
-        for (const item of tabs) {
+        for (const item of TAB_ITEMS) {
           const isMethodEnabled = selectedMethods.includes(item.id);
           const isCurrent = item.id === activeTabMethod && isMethodEnabled;
 
@@ -728,16 +1065,14 @@
         }
       }
 
-      // Sync tab state when browser find-in-page reveals a hidden="until-found" panel
-      panelWebSpeech.addEventListener('beforematch', () => selectTab('web-speech'));
-      panelGroqWhisper.addEventListener('beforematch', () => selectTab('groq-whisper'));
+      for (const item of TAB_ITEMS) {
+        item.panel.addEventListener('beforematch', () => selectTab(item.id));
+        item.tab.addEventListener('click', () => selectTab(item.id));
+      }
 
-      tabWebSpeech.addEventListener('click', () => selectTab('web-speech'));
-      tabGroqWhisper.addEventListener('click', () => selectTab('groq-whisper'));
-
-      // Selection follows focus on arrow navigation inside the tablist
+      // Selection follows focus on keyboard arrow navigation inside the tablist
       tablist.addEventListener('keydown', (event) => {
-        const visibleTabs = [tabWebSpeech, tabGroqWhisper].filter((t) => !t.hidden);
+        const visibleTabs = TAB_ITEMS.map((i) => i.tab).filter((t) => !t.hidden);
         if (visibleTabs.length < 2) return;
         const currentIdx = visibleTabs.indexOf(document.activeElement);
         if (currentIdx === -1) return;
@@ -763,6 +1098,9 @@
       function updateMethodSelectionUI() {
         const selected = getSelectedMethods();
         groqConfigPanel.classList.toggle('hidden', !methodGroqWhisperCb.checked);
+        geminiConfigPanel.classList.toggle('hidden', !methodGeminiApiCb.checked);
+        browserWhisperConfigPanel.classList.toggle('hidden', !methodBrowserWhisperCb.checked);
+
         if (selected.length === 0) {
           methodsSummaryBadge.textContent = 'No method selected';
         } else if (selected.length === 1) {
@@ -780,15 +1118,16 @@
 
       methodWebSpeechCb.addEventListener('change', updateMethodSelectionUI);
       methodGroqWhisperCb.addEventListener('change', updateMethodSelectionUI);
+      methodGeminiApiCb.addEventListener('change', updateMethodSelectionUI);
+      methodBrowserWhisperCb.addEventListener('change', updateMethodSelectionUI);
 
       function getActiveTextarea() {
-        return activeTabMethod === 'groq-whisper'
-          ? transcriptGroqWhisper
-          : transcriptWebSpeech;
+        const found = TAB_ITEMS.find((i) => i.id === activeTabMethod);
+        return found ? found.textarea : transcriptWebSpeech;
       }
 
       function syncUI() {
-        // Update Web Speech textarea & word count
+        // 1. Web Speech
         const combinedWeb = joinSegments(webFinalizedText, webInterimText);
         transcriptWebSpeech.value = combinedWeb;
         if (webSpeechActive) {
@@ -798,18 +1137,31 @@
         wordCountWebSpeech.textContent = `${webWords} ${webWords === 1 ? 'word' : 'words'}`;
         tabPillWebSpeech.textContent = `${webWords}w`;
 
-        // Update Groq Whisper textarea & word count
+        // 2. Groq Whisper
         transcriptGroqWhisper.value = groqFinalizedText;
         const groqWords = countWords(groqFinalizedText);
         wordCountGroqWhisper.textContent = `${groqWords} ${groqWords === 1 ? 'word' : 'words'}`;
         tabPillGroqWhisper.textContent = groqTranscribing ? '…' : `${groqWords}w`;
 
-        isListening = webSpeechActive || groqRecordingActive;
-        const anyContent = webWords > 0 || groqWords > 0;
+        // 3. Google Gemini
+        transcriptGeminiApi.value = geminiFinalizedText;
+        const geminiWords = countWords(geminiFinalizedText);
+        wordCountGeminiApi.textContent = `${geminiWords} ${geminiWords === 1 ? 'word' : 'words'}`;
+        tabPillGeminiApi.textContent = geminiTranscribing ? '…' : `${geminiWords}w`;
+
+        // 4. In-Browser Whisper
+        transcriptBrowserWhisper.value = browserWhisperFinalizedText;
+        const bwWords = countWords(browserWhisperFinalizedText);
+        wordCountBrowserWhisper.textContent = `${bwWords} ${bwWords === 1 ? 'word' : 'words'}`;
+        tabPillBrowserWhisper.textContent = browserWhisperTranscribing ? '…' : `${bwWords}w`;
+
+        isListening = webSpeechActive || mediaRecordingActive;
+        const anyTranscribing = groqTranscribing || geminiTranscribing || browserWhisperTranscribing;
+        const anyContent = webWords > 0 || groqWords > 0 || geminiWords > 0 || bwWords > 0;
         const activeTextareaHasContent = getActiveTextarea().value.trim().length > 0;
 
         stopBtn.disabled = !isListening;
-        resetBtn.disabled = !anyContent && !isListening && !groqTranscribing;
+        resetBtn.disabled = !anyContent && !isListening && !anyTranscribing;
         copyBtn.disabled = !activeTextareaHasContent;
 
         if (isListening) {
@@ -823,13 +1175,11 @@
           eqIndicator.classList.remove('hidden');
           eqIndicator.classList.add('flex');
 
-          const activeNames = [];
-          if (webSpeechActive) activeNames.push('Web Speech');
-          if (groqRecordingActive) activeNames.push('Groq Whisper');
-          statusText.textContent = `Listening (${activeNames.join(' + ')})… speak now`;
-          statusText.classList.remove('text-slate-600');
+          const activeCount = (webSpeechActive ? 1 : 0) + activeBatchEnginesForSession.length;
+          statusText.textContent = `Listening (${activeCount} ${activeCount === 1 ? 'engine' : 'engines'})… speak now`;
+          statusText.classList.remove('text-slate-600', 'text-indigo-600');
           statusText.classList.add('text-rose-600', 'font-semibold');
-        } else if (groqTranscribing) {
+        } else if (anyTranscribing) {
           micBtn.classList.remove('bg-rose-600', 'hover:bg-rose-700', 'shadow-rose-600/30');
           micBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'shadow-indigo-600/30');
           micBtn.setAttribute('aria-pressed', 'false');
@@ -837,7 +1187,7 @@
           eqIndicator.classList.add('hidden');
           eqIndicator.classList.remove('flex');
           statusDot.classList.remove('hidden');
-          statusText.textContent = 'Transcribing audio with Groq Whisper…';
+          statusText.textContent = 'Processing recorded audio across selected engines…';
           statusText.classList.remove('text-rose-600', 'font-semibold');
           statusText.classList.add('text-indigo-600', 'font-semibold');
         } else {
@@ -860,12 +1210,10 @@
       }
 
       /**
-       * Initializes native browser SpeechRecognition.
+       * 1. Initializes native browser SpeechRecognition.
        */
       function initSpeechRecognition() {
-        if (!SpeechRecognitionAPI) {
-          return;
-        }
+        if (!SpeechRecognitionAPI) return;
 
         recognition = new SpeechRecognitionAPI();
         recognition.continuous = true;
@@ -906,9 +1254,7 @@
         };
 
         recognition.onerror = (event) => {
-          if (event.error === 'no-speech' || event.error === 'aborted') {
-            return;
-          }
+          if (event.error === 'no-speech' || event.error === 'aborted') return;
           webSpeechActive = false;
           showAlert('warning', 'Web Speech API Notice', `Browser SpeechRecognition reported: ${event.error}`);
           syncUI();
@@ -924,8 +1270,8 @@
             try {
               recognition.start();
               return;
-            } catch (err) {
-              // Fall through to stopped state
+            } catch (_) {
+              // Fall through
             }
           }
 
@@ -935,7 +1281,7 @@
       }
 
       /**
-       * Sends recorded audio blob to Groq's OpenAI-compatible Whisper endpoint.
+       * 2. Sends recorded audio blob to Groq's Whisper endpoint.
        */
       async function sendAudioToGroqWhisper(audioBlob) {
         const apiKey = groqApiKeyInput.value.trim();
@@ -952,13 +1298,10 @@
         formData.append('model', model);
         formData.append('response_format', 'verbose_json');
 
-        // Pass optional 2-letter ISO-639-1 language hint only if user explicitly selected one
         const selectedLocale = languageSelect.value;
         if (selectedLocale) {
           const isoLang = selectedLocale.split('-')[0].toLowerCase();
-          if (isoLang) {
-            formData.append('language', isoLang);
-          }
+          if (isoLang) formData.append('language', isoLang);
         }
 
         const startTime = performance.now();
@@ -978,12 +1321,8 @@
             let errDetail = `HTTP ${response.status}`;
             try {
               const errJson = await response.json();
-              if (errJson.error && errJson.error.message) {
-                errDetail = errJson.error.message;
-              }
-            } catch (_) {
-              // Ignore JSON parse errors on error payload
-            }
+              if (errJson.error && errJson.error.message) errDetail = errJson.error.message;
+            } catch (_) {}
             throw new Error(errDetail);
           }
 
@@ -999,13 +1338,255 @@
         } catch (err) {
           badgeGroqWhisper.textContent = 'Transcription failed';
           badgeGroqWhisper.classList.remove('hidden');
-          showAlert(
-            'error',
-            'Groq Whisper API Error',
-            err.message || 'Could not reach Groq Whisper endpoint.'
-          );
+          showAlert('error', 'Groq Whisper API Error', err.message || 'Could not reach Groq Whisper endpoint.');
         } finally {
           groqTranscribing = false;
+          syncUI();
+        }
+      }
+
+      /**
+       * Helper: Converts a Blob into a base64 string (without data URL prefix).
+       */
+      function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = String(reader.result || '');
+            const commaIdx = result.indexOf(',');
+            resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      /**
+       * 3. Sends recorded audio blob to Google AI Studio — Gemini API.
+       */
+      async function sendAudioToGeminiApi(audioBlob) {
+        const apiKey = geminiApiKeyInput.value.trim();
+        const model = geminiModelSelect.value || 'gemini-2.5-flash-lite';
+
+        geminiTranscribing = true;
+        badgeGeminiApi.textContent = `Transcribing (${model})…`;
+        badgeGeminiApi.classList.remove('hidden');
+        syncUI();
+
+        const startTime = performance.now();
+
+        try {
+          const base64Audio = await blobToBase64(audioBlob);
+          const mimeType = (audioBlob.type || 'audio/webm').split(';')[0];
+          const selectedLocale = languageSelect.value;
+          const langHint = selectedLocale
+            ? `The spoken language is ${selectedLocale}.`
+            : 'Automatically detect the spoken language.';
+
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+            model
+          )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      inline_data: {
+                        mime_type: mimeType,
+                        data: base64Audio,
+                      },
+                    },
+                    {
+                      text: `Transcribe the spoken audio verbatim. ${langHint} Return a JSON object with keys "transcript" (exact spoken words, or empty string if silent) and "language" (detected language code or name).`,
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: 0,
+                responseMimeType: 'application/json',
+              },
+            }),
+          });
+
+          const elapsedMs = Math.round(performance.now() - startTime);
+
+          if (!response.ok) {
+            let errDetail = `HTTP ${response.status}`;
+            try {
+              const errJson = await response.json();
+              if (errJson.error && errJson.error.message) errDetail = errJson.error.message;
+            } catch (_) {}
+            throw new Error(errDetail);
+          }
+
+          const payload = await response.json();
+          const rawText =
+            payload?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+          let transcript = '';
+          let detectedLanguage = '';
+          try {
+            const parsed = JSON.parse(rawText);
+            transcript = (parsed.transcript || '').trim();
+            detectedLanguage = parsed.language || '';
+          } catch (_) {
+            transcript = rawText.trim();
+          }
+
+          if (transcript) {
+            geminiFinalizedText = joinSegments(geminiFinalizedText, transcript);
+          }
+
+          const langLabel = detectedLanguage ? ` • Lang: ${detectedLanguage}` : '';
+          badgeGeminiApi.textContent = `${elapsedMs} ms${langLabel} • ${model}`;
+          badgeGeminiApi.classList.remove('hidden');
+        } catch (err) {
+          badgeGeminiApi.textContent = 'Transcription failed';
+          badgeGeminiApi.classList.remove('hidden');
+          showAlert('error', 'Google Gemini API Error', err.message || 'Could not reach Google AI Studio endpoint.');
+        } finally {
+          geminiTranscribing = false;
+          syncUI();
+        }
+      }
+
+      /**
+       * Decodes a recorded audio Blob into a 16kHz mono Float32Array for local Whisper inference.
+       */
+      async function decodeAudioBlobTo16kHzMono(audioBlob) {
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioCtx({ sampleRate: 16000 });
+        try {
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          return audioBuffer.getChannelData(0);
+        } finally {
+          if (typeof audioCtx.close === 'function') {
+            await audioCtx.close();
+          }
+        }
+      }
+
+      /**
+       * 4. Runs In-Browser Whisper locally via Hugging Face Transformers.js (WebGPU / WASM).
+       */
+      async function createBrowserWhisperPipeline(pipeline, modelId, progressCallback) {
+        let adapter = null;
+        try {
+          adapter = await navigator.gpu?.requestAdapter();
+        }
+        catch {
+          // Browsers can expose WebGPU while blocking access to an adapter.
+        }
+
+        if (adapter) {
+          try {
+            const transcriber = await pipeline('automatic-speech-recognition', modelId, {
+              device: 'webgpu',
+              dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+              progress_callback: progressCallback,
+            });
+            webgpuStatusBadge.textContent = 'WebGPU Acceleration Available';
+            return transcriber;
+          }
+          catch {
+            // Session initialization can fail even when an adapter is available.
+          }
+        }
+
+        webgpuStatusBadge.textContent = 'WASM CPU Acceleration';
+        return pipeline('automatic-speech-recognition', modelId, {
+          device: 'wasm',
+          dtype: 'q8',
+          progress_callback: progressCallback,
+        });
+      }
+
+      async function runBrowserWhisper(audioBlob) {
+        const modelId = browserWhisperModelSelect.value || 'onnx-community/whisper-tiny';
+        const selectedLocale = languageSelect.value;
+        const langCode = selectedLocale ? selectedLocale.split('-')[0].toLowerCase() : null;
+
+        browserWhisperTranscribing = true;
+        badgeBrowserWhisper.textContent = 'Preparing local Whisper…';
+        badgeBrowserWhisper.classList.remove('hidden');
+        syncUI();
+
+        const startTime = performance.now();
+
+        try {
+          let result;
+          if (typeof window.__customBrowserWhisperRunner === 'function') {
+            result = await window.__customBrowserWhisperRunner(
+              audioBlob,
+              modelId,
+              langCode,
+              (statusMsg) => {
+                badgeBrowserWhisper.textContent = statusMsg;
+              }
+            );
+          } else {
+            if (!loadedPipelines[modelId]) {
+              badgeBrowserWhisper.textContent = `Loading ${modelId.split('/').pop()}…`;
+              const { pipeline } = await import(
+                'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0'
+              );
+              loadedPipelines[modelId] = await createBrowserWhisperPipeline(
+                pipeline,
+                modelId,
+                (prog) => {
+                    if (prog && prog.status === 'progress' && typeof prog.progress === 'number') {
+                      badgeBrowserWhisper.textContent = `Downloading model ${Math.round(
+                        prog.progress
+                      )}%…`;
+                    }
+                }
+              );
+            }
+
+            badgeBrowserWhisper.textContent = 'Running on-device inference…';
+            const audioFloat32 = await decodeAudioBlobTo16kHzMono(audioBlob);
+            const transcriber = loadedPipelines[modelId];
+            const options = {
+              chunk_length_s: 30,
+              stride_length_s: 5,
+            };
+            if (!modelId.endsWith('.en')) {
+              options.task = 'transcribe';
+              if (langCode) options.language = langCode;
+            }
+            result = await transcriber(audioFloat32, options);
+          }
+
+          const elapsedMs = Math.round(performance.now() - startTime);
+          const transcript = (result?.text || '').trim();
+          if (transcript) {
+            browserWhisperFinalizedText = joinSegments(
+              browserWhisperFinalizedText,
+              transcript
+            );
+          }
+
+          const shortModel = modelId.split('/').pop();
+          badgeBrowserWhisper.textContent = `${elapsedMs} ms • On-Device • ${shortModel}`;
+          badgeBrowserWhisper.classList.remove('hidden');
+        } catch (err) {
+          badgeBrowserWhisper.textContent = 'Local inference failed';
+          badgeBrowserWhisper.classList.remove('hidden');
+          showAlert(
+            'error',
+            'In-Browser Whisper Error',
+            err.message || 'Failed to run local Whisper inference.'
+          );
+        } finally {
+          browserWhisperTranscribing = false;
           syncUI();
         }
       }
@@ -1029,14 +1610,26 @@
 
         const useWebSpeech = selected.includes('web-speech');
         const useGroq = selected.includes('groq-whisper');
+        const useGemini = selected.includes('gemini-api');
+        const useBrowserWhisper = selected.includes('browser-whisper');
 
         if (useGroq && !groqApiKeyInput.value.trim()) {
           showAlert(
             'error',
             'Groq API Key Required',
-            'Enter your free Groq API key (gsk_...) in the configuration bar above to transcribe with Groq Whisper.'
+            'Enter your free Groq API key (gsk_...) in the configuration bar above to use Groq Whisper.'
           );
           groqApiKeyInput.focus();
+          return;
+        }
+
+        if (useGemini && !geminiApiKeyInput.value.trim()) {
+          showAlert(
+            'error',
+            'Google AI Studio API Key Required',
+            'Enter your free Google AI Studio API key (AIza...) in the configuration bar above to use Google Gemini.'
+          );
+          geminiApiKeyInput.focus();
           return;
         }
 
@@ -1050,9 +1643,10 @@
         }
 
         userRequestedStop = false;
+        activeBatchEnginesForSession = selected.filter((id) => id !== 'web-speech');
 
-        // Start Groq MediaRecorder if selected
-        if (useGroq) {
+        // Start shared MediaRecorder if any batch audio engine (Groq, Gemini, In-Browser Whisper) is selected
+        if (activeBatchEnginesForSession.length > 0) {
           try {
             mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioChunks = [];
@@ -1064,32 +1658,56 @@
               }
             };
 
+            const sessionEngines = [...activeBatchEnginesForSession];
             mediaRecorder.onstop = () => {
               if (mediaStream) {
                 mediaStream.getTracks().forEach((track) => track.stop());
                 mediaStream = null;
               }
-              groqRecordingActive = false;
+              mediaRecordingActive = false;
               if (audioChunks.length > 0) {
                 const mimeType = mediaRecorder.mimeType || 'audio/webm';
                 const audioBlob = new Blob(audioChunks, { type: mimeType });
                 audioChunks = [];
-                sendAudioToGroqWhisper(audioBlob);
+                const tasks = [];
+                if (sessionEngines.includes('groq-whisper')) {
+                  tasks.push(sendAudioToGroqWhisper(audioBlob));
+                }
+                if (sessionEngines.includes('gemini-api')) {
+                  tasks.push(sendAudioToGeminiApi(audioBlob));
+                }
+                if (sessionEngines.includes('browser-whisper')) {
+                  tasks.push(runBrowserWhisper(audioBlob));
+                }
+                Promise.allSettled(tasks);
               } else {
                 syncUI();
               }
             };
 
-            groqFinalizedText = transcriptGroqWhisper.value;
+            if (useGroq) {
+              groqFinalizedText = transcriptGroqWhisper.value;
+              badgeGroqWhisper.textContent = 'Recording audio…';
+              badgeGroqWhisper.classList.remove('hidden');
+            }
+            if (useGemini) {
+              geminiFinalizedText = transcriptGeminiApi.value;
+              badgeGeminiApi.textContent = 'Recording audio…';
+              badgeGeminiApi.classList.remove('hidden');
+            }
+            if (useBrowserWhisper) {
+              browserWhisperFinalizedText = transcriptBrowserWhisper.value;
+              badgeBrowserWhisper.textContent = 'Recording audio…';
+              badgeBrowserWhisper.classList.remove('hidden');
+            }
+
             mediaRecorder.start();
-            groqRecordingActive = true;
-            badgeGroqWhisper.textContent = 'Recording audio…';
-            badgeGroqWhisper.classList.remove('hidden');
+            mediaRecordingActive = true;
           } catch (err) {
             showAlert(
               'error',
               'Microphone Access Blocked',
-              'Could not start audio recording for Groq Whisper. Check browser microphone permissions.'
+              'Could not start audio recording. Check your browser microphone permissions.'
             );
             return;
           }
@@ -1125,12 +1743,12 @@
           }
         }
 
-        if (mediaRecorder && groqRecordingActive) {
+        if (mediaRecorder && mediaRecordingActive) {
           try {
             mediaRecorder.stop();
           } catch (err) {
             console.warn('MediaRecorder stop warning:', err);
-            groqRecordingActive = false;
+            mediaRecordingActive = false;
           }
         }
 
@@ -1152,9 +1770,9 @@
           }
         }
 
-        if (mediaRecorder && groqRecordingActive) {
+        if (mediaRecorder && mediaRecordingActive) {
           audioChunks = [];
-          groqRecordingActive = false;
+          mediaRecordingActive = false;
           try {
             mediaRecorder.onstop = () => {
               if (mediaStream) {
@@ -1171,10 +1789,19 @@
         webFinalizedText = '';
         webInterimText = '';
         groqFinalizedText = '';
+        geminiFinalizedText = '';
+        browserWhisperFinalizedText = '';
+
         transcriptWebSpeech.value = '';
         transcriptGroqWhisper.value = '';
+        transcriptGeminiApi.value = '';
+        transcriptBrowserWhisper.value = '';
+
         badgeWebSpeech.classList.add('hidden');
         badgeGroqWhisper.classList.add('hidden');
+        badgeGeminiApi.classList.add('hidden');
+        badgeBrowserWhisper.classList.add('hidden');
+
         hideAlert();
         syncUI();
       }
@@ -1199,8 +1826,22 @@
       });
 
       transcriptGroqWhisper.addEventListener('input', () => {
-        if (!groqRecordingActive) {
+        if (!mediaRecordingActive) {
           groqFinalizedText = transcriptGroqWhisper.value;
+          syncUI();
+        }
+      });
+
+      transcriptGeminiApi.addEventListener('input', () => {
+        if (!mediaRecordingActive) {
+          geminiFinalizedText = transcriptGeminiApi.value;
+          syncUI();
+        }
+      });
+
+      transcriptBrowserWhisper.addEventListener('input', () => {
+        if (!mediaRecordingActive) {
+          browserWhisperFinalizedText = transcriptBrowserWhisper.value;
           syncUI();
         }
       });
