@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web Speech API — Voice-to-Text Demo</title>
+  <title>Voice-to-Text Transcriber — Multi-Engine Demo</title>
   <!-- Load Tailwind CSS for clean, modern, responsive styling -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Load Inter font for high legibility -->
@@ -53,38 +53,102 @@
     .eq-bar-3 {
       animation: eq-bar 0.65s ease-in-out 0.3s infinite;
     }
+
+    /* Choice cards: border-width stays 2px so selection never causes layout shift */
+    .choice-card {
+      border: 2px solid #e2e8f0;
+      transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .choice-card:has(> input[type="checkbox"]:checked) {
+      border-color: #4f46e5;
+      background-color: rgba(238, 242, 255, 0.45);
+    }
+
+    .choice-card:has(> input[type="checkbox"]:focus-visible) {
+      outline: 2px solid #4f46e5;
+      outline-offset: 2px;
+    }
+
+    /* Tablist & Tab styling from aria-selected (no dimension/font-weight changes on selection) */
+    .tablist-scroller {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: inline proximity;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .tablist-scroller[hidden] {
+      display: none !important;
+    }
+
+    [role="tab"] {
+      position: relative;
+      flex: none;
+      scroll-snap-align: start;
+      color: #64748b;
+      transition: color 0.15s ease;
+    }
+
+    [role="tab"]:hover {
+      color: #1e293b;
+    }
+
+    [role="tab"][aria-selected="true"] {
+      color: #4f46e5;
+    }
+
+    [role="tab"][aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      border-block-end: 3px solid #4f46e5;
+    }
+
+    /* Place all tabpanels in the same grid cell; keep padding/borders on inner wrapper only */
+    .panels-stack {
+      display: grid;
+    }
+
+    .panels-stack > [role="tabpanel"] {
+      grid-area: 1 / 1;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-center p-4 sm:p-6">
 
   <!-- Main Card Container -->
-  <main class="w-full max-w-2xl bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/80 overflow-hidden">
+  <main class="w-full max-w-3xl bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/80 overflow-hidden">
     
     <!-- Header Bar -->
     <header class="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Browser Native API</span>
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Multi-Engine Audio Lab</span>
         </div>
         <h1 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">Voice-to-Text Transcriber</h1>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-          100% client-side using <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-xs">SpeechRecognition</code>
+          Compare browser-native <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-xs">SpeechRecognition</code> &amp; Groq's Free Dedicated Whisper API side by side
         </p>
       </div>
 
-      <!-- Language Selector -->
+      <!-- Spoken Language Selector -->
       <div class="flex flex-col sm:items-end">
         <label for="language-select" class="text-xs font-medium text-slate-500 mb-1">
           Spoken Language
         </label>
-        <div class="relative w-full sm:w-52">
+        <div class="relative w-full sm:w-60">
           <select
             id="language-select"
             aria-label="Spoken language"
             class="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 pr-9 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
           >
-            <option value="">Browser Default (Auto)</option>
+            <option value="">Auto-Detect / Browser Default</option>
             <option value="en-US">English (US)</option>
             <option value="en-GB">English (UK)</option>
             <option value="nl-BE">Dutch (Belgium)</option>
@@ -103,6 +167,130 @@
       </div>
     </header>
 
+    <!-- Transcription Methods Multi-Select Section -->
+    <section aria-labelledby="methods-heading" class="px-6 pt-5 pb-4 sm:px-8 border-b border-slate-100 bg-slate-50/40">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 id="methods-heading" class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          Transcription Methods (Multi-Select)
+        </h2>
+        <span id="methods-summary-badge" class="text-xs font-medium text-slate-500">
+          1 method active (single view)
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <!-- Choice Card 1: Browser Web Speech API -->
+        <label
+          for="method-web-speech"
+          class="choice-card rounded-2xl bg-white p-4 cursor-pointer flex items-start gap-3.5 shadow-sm"
+        >
+          <input
+            id="method-web-speech"
+            type="checkbox"
+            checked
+            class="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+          />
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
+              <span class="text-sm font-bold text-slate-900">Browser Web Speech API</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                100% Client-Side
+              </span>
+            </div>
+            <p class="mt-1 text-xs text-slate-600 leading-relaxed">
+              Streams real-time interim and finalized text continuously as you speak using native <code class="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">SpeechRecognition</code>.
+            </p>
+          </div>
+        </label>
+
+        <!-- Choice Card 2: Free Dedicated Whisper API (Groq Free Tier) -->
+        <label
+          for="method-groq-whisper"
+          class="choice-card rounded-2xl bg-white p-4 cursor-pointer flex items-start gap-3.5 shadow-sm"
+        >
+          <input
+            id="method-groq-whisper"
+            type="checkbox"
+            class="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+          />
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
+              <span class="text-sm font-bold text-slate-900">Free Dedicated Whisper API</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                Groq Free Tier • $0.00
+              </span>
+            </div>
+            <p class="mt-1 text-xs text-slate-600 leading-relaxed">
+              Standing free tier (20 req/min, 2,000 req/day, 8 hrs/day audio). Auto-detects ~99 languages in &lt;300 ms.
+            </p>
+          </div>
+        </label>
+      </div>
+
+      <!-- Groq Whisper Configuration Bar -->
+      <div
+        id="groq-config-panel"
+        class="hidden mt-3.5 rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-sm transition"
+      >
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <!-- Groq API Key Input -->
+          <div class="sm:col-span-6">
+            <div class="flex items-center justify-between mb-1">
+              <label for="groq-api-key" class="text-xs font-semibold text-slate-700">
+                Groq API Key <span class="font-normal text-slate-400">(localStorage)</span>
+              </label>
+              <a
+                href="https://console.groq.com/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-[11px] font-semibold text-indigo-600 hover:underline"
+              >
+                Get free key &rarr;
+              </a>
+            </div>
+            <div class="relative flex items-center">
+              <input
+                id="groq-api-key"
+                type="password"
+                autocomplete="off"
+                placeholder="gsk_..."
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-16 text-xs sm:text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+              <button
+                id="toggle-key-visibility"
+                type="button"
+                class="absolute right-2 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
+              >
+                Show
+              </button>
+            </div>
+          </div>
+
+          <!-- Groq Whisper Model Selector -->
+          <div class="sm:col-span-6">
+            <label for="groq-model-select" class="block text-xs font-semibold text-slate-700 mb-1">
+              Whisper Model
+            </label>
+            <div class="relative">
+              <select
+                id="groq-model-select"
+                aria-label="Groq Whisper model"
+                class="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-8 text-xs sm:text-sm font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+              >
+                <option value="whisper-large-v3-turbo" selected>whisper-large-v3-turbo (Fast &lt;300ms)</option>
+                <option value="whisper-large-v3">whisper-large-v3 (High Accuracy)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Browser Compatibility / Error Alert Banner (Hidden by default) -->
     <div
       id="alert-banner"
@@ -119,7 +307,7 @@
     </div>
 
     <!-- Primary Microphone Control Stage -->
-    <section class="px-6 pt-8 pb-6 sm:px-8 flex flex-col items-center justify-center">
+    <section class="px-6 pt-7 pb-5 sm:px-8 flex flex-col items-center justify-center">
       <div class="relative flex items-center justify-center">
         <!-- Pulsing outer rings (visible only while listening) -->
         <span
@@ -176,29 +364,118 @@
       </div>
     </section>
 
-    <!-- Transcription Output Area -->
+    <!-- Transcription Output Area (Single View when 1 method selected, Tabbed View when >1 selected) -->
     <section class="px-6 pb-6 sm:px-8">
       <div class="flex items-center justify-between mb-2">
-        <label for="transcript-box" class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h2 id="transcribed-heading" class="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Transcribed Text
-        </label>
-        <div class="flex items-center gap-3">
-          <span id="interim-badge" class="hidden text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-            Listening…
-          </span>
-          <span id="word-count" class="text-xs text-slate-400 font-medium">
-            0 words
-          </span>
-        </div>
+        </h2>
+        <span id="single-method-label" class="text-xs font-medium text-indigo-600">
+          Browser Web Speech API
+        </span>
       </div>
 
-      <div class="relative">
-        <textarea
-          id="transcript-box"
-          rows="6"
-          placeholder="Your spoken words will appear here in real time. You can also type or edit the text directly…"
-          class="w-full rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-base sm:text-lg leading-relaxed text-slate-800 placeholder:text-slate-400 shadow-inner transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
-        ></textarea>
+      <!-- Tablist: Shown ONLY when more than 1 transcription method is selected -->
+      <div
+        id="transcript-tablist"
+        role="tablist"
+        focusgroup="tablist nomemory"
+        aria-label="Transcribed text by method"
+        class="tablist-scroller mb-3 gap-2"
+        hidden
+      >
+        <button
+          type="button"
+          role="tab"
+          id="tab-web-speech"
+          data-method="web-speech"
+          aria-selected="true"
+          focusgroupstart
+          class="px-3.5 py-2.5 text-xs sm:text-sm font-medium inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-t-lg"
+        >
+          <span>Browser Web Speech API</span>
+          <span id="tab-pill-web-speech" class="px-1.5 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600">
+            0w
+          </span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          id="tab-groq-whisper"
+          data-method="groq-whisper"
+          aria-selected="false"
+          class="px-3.5 py-2.5 text-xs sm:text-sm font-medium inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-t-lg"
+        >
+          <span>Groq Whisper API</span>
+          <span id="tab-pill-groq-whisper" class="px-1.5 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600">
+            0w
+          </span>
+        </button>
+      </div>
+
+      <!-- Tab Panels Stack (all panels share grid cell 1/1; styling lives on inner wrapper) -->
+      <div class="panels-stack">
+        <!-- Panel 1: Browser Web Speech API -->
+        <div
+          role="tabpanel"
+          id="panel-web-speech"
+          aria-labelledby="tab-web-speech"
+        >
+          <div class="panel-surface">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs font-medium text-slate-500">
+                Real-Time Browser Stream (<code class="font-mono text-[11px]">SpeechRecognition</code>)
+              </span>
+              <div class="flex items-center gap-2.5">
+                <span id="badge-web-speech" class="hidden text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                  Listening…
+                </span>
+                <span id="word-count-web-speech" class="text-xs text-slate-400 font-medium">
+                  0 words
+                </span>
+              </div>
+            </div>
+            <textarea
+              id="transcript-web-speech"
+              aria-label="Browser Web Speech API Transcribed Text"
+              rows="6"
+              placeholder="Web Speech API transcript will stream here in real time as you speak…"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-base sm:text-lg leading-relaxed text-slate-800 placeholder:text-slate-400 shadow-inner transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Panel 2: Free Dedicated Whisper API (Groq) -->
+        <div
+          role="tabpanel"
+          id="panel-groq-whisper"
+          aria-labelledby="tab-groq-whisper"
+          hidden="until-found"
+        >
+          <div class="panel-surface">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs font-medium text-slate-500">
+                Groq Dedicated Whisper API (transcribes recorded audio when you click <strong>Stop</strong>)
+              </span>
+              <div class="flex items-center gap-2.5">
+                <span id="badge-groq-whisper" class="hidden text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-md">
+                  Ready
+                </span>
+                <span id="word-count-groq-whisper" class="text-xs text-slate-400 font-medium">
+                  0 words
+                </span>
+              </div>
+            </div>
+            <textarea
+              id="transcript-groq-whisper"
+              aria-label="Groq Whisper API Transcribed Text"
+              rows="6"
+              placeholder="Groq Whisper transcript will appear here as soon as you stop recording…"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-base sm:text-lg leading-relaxed text-slate-800 placeholder:text-slate-400 shadow-inner transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
+            ></textarea>
+          </div>
+        </div>
       </div>
 
       <!-- Action Buttons Row: Stop, Reset, and Copy -->
@@ -248,49 +525,109 @@
 
     <!-- Subtle Footer Tip -->
     <footer class="px-6 py-3.5 sm:px-8 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-      <span>Tip: Pause naturally between sentences—text accumulates until you click <strong>Reset</strong>.</span>
-      <span class="text-slate-400">Works best in Chrome, Edge &amp; Safari</span>
+      <span>Tip: Select both methods to compare live browser streaming against Groq Whisper in tabs.</span>
+      <span class="text-slate-400">Web Speech API + Groq Whisper v3</span>
     </footer>
   </main>
 
   <script>
     /**
-     * Web Speech API Voice-to-Text Demo
-     * Uses strictly the native browser SpeechRecognition / webkitSpeechRecognition interface.
+     * Multi-Method Voice-to-Text Transcriber Demo
+     * Supports:
+     * 1. Browser Native Web Speech API (SpeechRecognition / webkitSpeechRecognition)
+     * 2. Free Dedicated Whisper API via Groq's Free Tier (whisper-large-v3-turbo & whisper-large-v3)
      */
     (function () {
+      const STORAGE_KEY_GROQ = 'groq_api_key';
+      const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/audio/transcriptions';
+
       // DOM References
+      const methodWebSpeechCb = document.getElementById('method-web-speech');
+      const methodGroqWhisperCb = document.getElementById('method-groq-whisper');
+      const methodsSummaryBadge = document.getElementById('methods-summary-badge');
+      const singleMethodLabel = document.getElementById('single-method-label');
+
+      const groqConfigPanel = document.getElementById('groq-config-panel');
+      const groqApiKeyInput = document.getElementById('groq-api-key');
+      const toggleKeyBtn = document.getElementById('toggle-key-visibility');
+      const groqModelSelect = document.getElementById('groq-model-select');
+
+      const tablist = document.getElementById('transcript-tablist');
+      const tabWebSpeech = document.getElementById('tab-web-speech');
+      const tabGroqWhisper = document.getElementById('tab-groq-whisper');
+      const tabPillWebSpeech = document.getElementById('tab-pill-web-speech');
+      const tabPillGroqWhisper = document.getElementById('tab-pill-groq-whisper');
+
+      const panelWebSpeech = document.getElementById('panel-web-speech');
+      const panelGroqWhisper = document.getElementById('panel-groq-whisper');
+      const transcriptWebSpeech = document.getElementById('transcript-web-speech');
+      const transcriptGroqWhisper = document.getElementById('transcript-groq-whisper');
+
+      const badgeWebSpeech = document.getElementById('badge-web-speech');
+      const badgeGroqWhisper = document.getElementById('badge-groq-whisper');
+      const wordCountWebSpeech = document.getElementById('word-count-web-speech');
+      const wordCountGroqWhisper = document.getElementById('word-count-groq-whisper');
+
       const micBtn = document.getElementById('mic-btn');
       const micPulseRing = document.getElementById('mic-pulse-ring');
       const stopBtn = document.getElementById('stop-btn');
       const resetBtn = document.getElementById('reset-btn');
       const copyBtn = document.getElementById('copy-btn');
       const copyLabel = document.getElementById('copy-label');
-      const transcriptBox = document.getElementById('transcript-box');
       const languageSelect = document.getElementById('language-select');
       const statusText = document.getElementById('status-text');
       const statusDot = document.getElementById('status-dot');
       const eqIndicator = document.getElementById('eq-indicator');
-      const interimBadge = document.getElementById('interim-badge');
-      const wordCount = document.getElementById('word-count');
       const alertBanner = document.getElementById('alert-banner');
       const alertTitle = document.getElementById('alert-title');
       const alertMessage = document.getElementById('alert-message');
 
-      // Check for native browser SpeechRecognition support
       const SpeechRecognitionAPI =
         window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      // Application State
-      let recognition = null;
+      // State
+      let activeTabMethod = 'web-speech'; // 'web-speech' | 'groq-whisper'
       let isListening = false;
-      let userRequestedStop = false;
-      let finalizedText = ''; // Stores confirmed text accumulated across pauses/sessions
-      let currentInterimText = ''; // Stores live in-progress words for the current utterance
 
-      /**
-       * Displays a styled alert message banner (used for unsupported browsers or permission issues).
-       */
+      // Web Speech API state
+      let recognition = null;
+      let webSpeechActive = false;
+      let userRequestedStop = false;
+      let webFinalizedText = '';
+      let webInterimText = '';
+
+      // Groq Whisper MediaRecorder state
+      let mediaRecorder = null;
+      let mediaStream = null;
+      let audioChunks = [];
+      let groqRecordingActive = false;
+      let groqTranscribing = false;
+      let groqFinalizedText = '';
+
+      // Load saved Groq API key from localStorage
+      try {
+        const savedKey = localStorage.getItem(STORAGE_KEY_GROQ);
+        if (savedKey) {
+          groqApiKeyInput.value = savedKey;
+        }
+      } catch (err) {
+        console.warn('Unable to read localStorage:', err);
+      }
+
+      groqApiKeyInput.addEventListener('input', () => {
+        try {
+          localStorage.setItem(STORAGE_KEY_GROQ, groqApiKeyInput.value.trim());
+        } catch (err) {
+          console.warn('Unable to write localStorage:', err);
+        }
+      });
+
+      toggleKeyBtn.addEventListener('click', () => {
+        const isPassword = groqApiKeyInput.type === 'password';
+        groqApiKeyInput.type = isPassword ? 'text' : 'password';
+        toggleKeyBtn.textContent = isPassword ? 'Hide' : 'Show';
+      });
+
       function showAlert(type, title, message) {
         alertBanner.classList.remove(
           'hidden',
@@ -316,45 +653,165 @@
         alertBanner.classList.add('hidden');
       }
 
-      /**
-       * Helper to join two text segments cleanly with a single space if needed.
-       */
       function joinSegments(base, addition) {
         const cleanBase = base.trimEnd();
         const cleanAdd = addition.trimStart();
         if (!cleanBase) return cleanAdd;
         if (!cleanAdd) return cleanBase;
-        // Avoid adding a space before standard punctuation marks
         if (/^[.,!?;:]/.test(cleanAdd)) {
           return cleanBase + cleanAdd;
         }
         return cleanBase + ' ' + cleanAdd;
       }
 
-      /**
-       * Updates the textarea value, word counter, and button enabled/disabled states.
-       */
-      function syncUI() {
-        const combined = joinSegments(finalizedText, currentInterimText);
-        transcriptBox.value = combined;
+      function countWords(text) {
+        const trimmed = text.trim();
+        return trimmed ? trimmed.split(/\s+/).length : 0;
+      }
 
-        // Auto-scroll textarea to the bottom while speaking
-        if (isListening) {
-          transcriptBox.scrollTop = transcriptBox.scrollHeight;
+      function getSelectedMethods() {
+        const selected = [];
+        if (methodWebSpeechCb.checked) selected.push('web-speech');
+        if (methodGroqWhisperCb.checked) selected.push('groq-whisper');
+        return selected;
+      }
+
+      /**
+       * Selects a tab and updates panel visibility using hidden="until-found" for inactive tabs.
+       */
+      function selectTab(method, moveFocus = false) {
+        const selectedMethods = getSelectedMethods();
+        if (selectedMethods.length > 0 && !selectedMethods.includes(method)) {
+          method = selectedMethods[0];
+        }
+        activeTabMethod = method;
+
+        const tabs = [
+          { id: 'web-speech', tab: tabWebSpeech, panel: panelWebSpeech },
+          { id: 'groq-whisper', tab: tabGroqWhisper, panel: panelGroqWhisper },
+        ];
+
+        const showTabs = selectedMethods.length > 1;
+        tablist.hidden = !showTabs;
+
+        if (selectedMethods.length === 1) {
+          singleMethodLabel.classList.remove('hidden');
+          singleMethodLabel.textContent =
+            selectedMethods[0] === 'web-speech'
+              ? 'Browser Web Speech API'
+              : 'Free Dedicated Whisper API (Groq)';
+        } else {
+          singleMethodLabel.classList.add('hidden');
         }
 
-        // Update word count
-        const trimmed = combined.trim();
-        const words = trimmed ? trimmed.split(/\s+/).length : 0;
-        wordCount.textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+        for (const item of tabs) {
+          const isMethodEnabled = selectedMethods.includes(item.id);
+          const isCurrent = item.id === activeTabMethod && isMethodEnabled;
 
-        // Update button states
+          item.tab.hidden = !isMethodEnabled;
+          item.tab.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+          item.tab.toggleAttribute('focusgroupstart', isCurrent);
+
+          if (!isMethodEnabled) {
+            item.panel.hidden = true;
+          } else if (isCurrent) {
+            item.panel.hidden = false;
+            if (showTabs && typeof item.tab.scrollIntoView === 'function') {
+              item.tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+            if (moveFocus) {
+              item.tab.focus();
+            }
+          } else {
+            item.panel.setAttribute('hidden', 'until-found');
+          }
+        }
+      }
+
+      // Sync tab state when browser find-in-page reveals a hidden="until-found" panel
+      panelWebSpeech.addEventListener('beforematch', () => selectTab('web-speech'));
+      panelGroqWhisper.addEventListener('beforematch', () => selectTab('groq-whisper'));
+
+      tabWebSpeech.addEventListener('click', () => selectTab('web-speech'));
+      tabGroqWhisper.addEventListener('click', () => selectTab('groq-whisper'));
+
+      // Selection follows focus on arrow navigation inside the tablist
+      tablist.addEventListener('keydown', (event) => {
+        const visibleTabs = [tabWebSpeech, tabGroqWhisper].filter((t) => !t.hidden);
+        if (visibleTabs.length < 2) return;
+        const currentIdx = visibleTabs.indexOf(document.activeElement);
+        if (currentIdx === -1) return;
+
+        let nextIdx = -1;
+        if (event.key === 'ArrowRight') {
+          nextIdx = (currentIdx + 1) % visibleTabs.length;
+        } else if (event.key === 'ArrowLeft') {
+          nextIdx = (currentIdx - 1 + visibleTabs.length) % visibleTabs.length;
+        } else if (event.key === 'Home') {
+          nextIdx = 0;
+        } else if (event.key === 'End') {
+          nextIdx = visibleTabs.length - 1;
+        }
+
+        if (nextIdx !== -1) {
+          event.preventDefault();
+          const targetMethod = visibleTabs[nextIdx].dataset.method;
+          selectTab(targetMethod, true);
+        }
+      });
+
+      function updateMethodSelectionUI() {
+        const selected = getSelectedMethods();
+        groqConfigPanel.classList.toggle('hidden', !methodGroqWhisperCb.checked);
+        if (selected.length === 0) {
+          methodsSummaryBadge.textContent = 'No method selected';
+        } else if (selected.length === 1) {
+          methodsSummaryBadge.textContent = '1 method active (single view)';
+        } else {
+          methodsSummaryBadge.textContent = `${selected.length} methods active (tabbed comparison)`;
+        }
+
+        if (selected.length > 0 && !selected.includes(activeTabMethod)) {
+          activeTabMethod = selected[0];
+        }
+        selectTab(activeTabMethod);
+        syncUI();
+      }
+
+      methodWebSpeechCb.addEventListener('change', updateMethodSelectionUI);
+      methodGroqWhisperCb.addEventListener('change', updateMethodSelectionUI);
+
+      function getActiveTextarea() {
+        return activeTabMethod === 'groq-whisper'
+          ? transcriptGroqWhisper
+          : transcriptWebSpeech;
+      }
+
+      function syncUI() {
+        // Update Web Speech textarea & word count
+        const combinedWeb = joinSegments(webFinalizedText, webInterimText);
+        transcriptWebSpeech.value = combinedWeb;
+        if (webSpeechActive) {
+          transcriptWebSpeech.scrollTop = transcriptWebSpeech.scrollHeight;
+        }
+        const webWords = countWords(combinedWeb);
+        wordCountWebSpeech.textContent = `${webWords} ${webWords === 1 ? 'word' : 'words'}`;
+        tabPillWebSpeech.textContent = `${webWords}w`;
+
+        // Update Groq Whisper textarea & word count
+        transcriptGroqWhisper.value = groqFinalizedText;
+        const groqWords = countWords(groqFinalizedText);
+        wordCountGroqWhisper.textContent = `${groqWords} ${groqWords === 1 ? 'word' : 'words'}`;
+        tabPillGroqWhisper.textContent = groqTranscribing ? '…' : `${groqWords}w`;
+
+        isListening = webSpeechActive || groqRecordingActive;
+        const anyContent = webWords > 0 || groqWords > 0;
+        const activeTextareaHasContent = getActiveTextarea().value.trim().length > 0;
+
         stopBtn.disabled = !isListening;
-        const hasContent = trimmed.length > 0;
-        resetBtn.disabled = !hasContent && !isListening;
-        copyBtn.disabled = !hasContent;
+        resetBtn.disabled = !anyContent && !isListening && !groqTranscribing;
+        copyBtn.disabled = !activeTextareaHasContent;
 
-        // Update Microphone Button & Status Pill appearance
         if (isListening) {
           micBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'shadow-indigo-600/30');
           micBtn.classList.add('bg-rose-600', 'hover:bg-rose-700', 'shadow-rose-600/30');
@@ -365,9 +822,24 @@
           statusDot.classList.add('hidden');
           eqIndicator.classList.remove('hidden');
           eqIndicator.classList.add('flex');
-          statusText.textContent = 'Listening… speak now';
+
+          const activeNames = [];
+          if (webSpeechActive) activeNames.push('Web Speech');
+          if (groqRecordingActive) activeNames.push('Groq Whisper');
+          statusText.textContent = `Listening (${activeNames.join(' + ')})… speak now`;
           statusText.classList.remove('text-slate-600');
           statusText.classList.add('text-rose-600', 'font-semibold');
+        } else if (groqTranscribing) {
+          micBtn.classList.remove('bg-rose-600', 'hover:bg-rose-700', 'shadow-rose-600/30');
+          micBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'shadow-indigo-600/30');
+          micBtn.setAttribute('aria-pressed', 'false');
+          micPulseRing.classList.add('hidden');
+          eqIndicator.classList.add('hidden');
+          eqIndicator.classList.remove('flex');
+          statusDot.classList.remove('hidden');
+          statusText.textContent = 'Transcribing audio with Groq Whisper…';
+          statusText.classList.remove('text-rose-600', 'font-semibold');
+          statusText.classList.add('text-indigo-600', 'font-semibold');
         } else {
           micBtn.classList.remove('bg-rose-600', 'hover:bg-rose-700', 'shadow-rose-600/30');
           micBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'shadow-indigo-600/30');
@@ -378,43 +850,34 @@
           eqIndicator.classList.add('hidden');
           eqIndicator.classList.remove('flex');
           statusDot.classList.remove('hidden');
-          interimBadge.classList.add('hidden');
-          statusText.textContent = hasContent
+          badgeWebSpeech.classList.add('hidden');
+          statusText.textContent = anyContent
             ? 'Paused — tap microphone to continue'
             : 'Tap the microphone to start speaking';
-          statusText.classList.remove('text-rose-600', 'font-semibold');
+          statusText.classList.remove('text-rose-600', 'text-indigo-600', 'font-semibold');
           statusText.classList.add('text-slate-600');
         }
       }
 
       /**
-       * Initializes and configures the SpeechRecognition instance.
+       * Initializes native browser SpeechRecognition.
        */
       function initSpeechRecognition() {
         if (!SpeechRecognitionAPI) {
-          micBtn.disabled = true;
-          languageSelect.disabled = true;
-          statusText.textContent = 'SpeechRecognition unavailable in this browser';
-          showAlert(
-            'error',
-            'Browser Not Supported',
-            'Your current browser does not support the Web Speech API (SpeechRecognition). Please open this page in Google Chrome, Microsoft Edge, or Apple Safari.'
-          );
           return;
         }
 
         recognition = new SpeechRecognitionAPI();
-        recognition.continuous = true; // Keep listening across natural pauses
-        recognition.interimResults = true; // Stream real-time partial results as user speaks
+        recognition.continuous = true;
+        recognition.interimResults = true;
         recognition.maxAlternatives = 1;
-
-        // Apply initial language selection (falls back to browser/OS locale when empty)
         recognition.lang = languageSelect.value || navigator.language || 'en-US';
 
         recognition.onstart = () => {
-          isListening = true;
+          webSpeechActive = true;
           userRequestedStop = false;
-          hideAlert();
+          badgeWebSpeech.textContent = 'Listening…';
+          badgeWebSpeech.classList.remove('hidden');
           syncUI();
         };
 
@@ -422,11 +885,9 @@
           let sessionFinal = '';
           let sessionInterim = '';
 
-          // Iterate from resultIndex to process newly finalized and interim segments
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const result = event.results[i];
             const transcript = result[0].transcript;
-
             if (result.isFinal) {
               sessionFinal += transcript;
             } else {
@@ -435,139 +896,255 @@
           }
 
           if (sessionFinal) {
-            finalizedText = joinSegments(finalizedText, sessionFinal);
+            webFinalizedText = joinSegments(webFinalizedText, sessionFinal);
           }
 
-          currentInterimText = sessionInterim;
-
-          if (sessionInterim.trim().length > 0) {
-            interimBadge.classList.remove('hidden');
-          } else {
-            interimBadge.classList.add('hidden');
-          }
-
+          webInterimText = sessionInterim;
+          badgeWebSpeech.textContent = sessionInterim.trim() ? 'Streaming…' : 'Listening…';
+          badgeWebSpeech.classList.remove('hidden');
           syncUI();
         };
 
         recognition.onerror = (event) => {
-          switch (event.error) {
-            case 'not-allowed':
-            case 'service-not-allowed':
-              userRequestedStop = true;
-              isListening = false;
-              showAlert(
-                'error',
-                'Microphone Access Blocked',
-                'Please allow microphone permissions in your browser address bar settings and try again.'
-              );
-              break;
-
-            case 'audio-capture':
-              userRequestedStop = true;
-              isListening = false;
-              showAlert(
-                'error',
-                'No Microphone Found',
-                'No working microphone was detected on your device. Check your audio input settings.'
-              );
-              break;
-
-            case 'no-speech':
-              // Benign timeout when user pauses silently; do not show an intrusive error
-              statusText.textContent = 'No speech detected — still listening…';
-              break;
-
-            case 'network':
-              userRequestedStop = true;
-              isListening = false;
-              showAlert(
-                'error',
-                'Speech Service Network Error',
-                'The browser speech recognition service could not be reached. Check your internet connection.'
-              );
-              break;
-
-            case 'aborted':
-              // Triggered intentionally on stop/reset
-              break;
-
-            default:
-              showAlert(
-                'warning',
-                'Speech Recognition Notice',
-                `Recognition reported: ${event.error}`
-              );
-              break;
+          if (event.error === 'no-speech' || event.error === 'aborted') {
+            return;
           }
-
+          webSpeechActive = false;
+          showAlert('warning', 'Web Speech API Notice', `Browser SpeechRecognition reported: ${event.error}`);
           syncUI();
         };
 
         recognition.onend = () => {
-          // Commit any lingering interim text when a session ends
-          if (currentInterimText.trim()) {
-            finalizedText = joinSegments(finalizedText, currentInterimText);
-            currentInterimText = '';
+          if (webInterimText.trim()) {
+            webFinalizedText = joinSegments(webFinalizedText, webInterimText);
+            webInterimText = '';
           }
 
-          // Some browsers (especially mobile Safari/Chrome) stop continuous recognition
-          // after prolonged silence. Automatically restart unless the user clicked Stop/Reset.
-          if (isListening && !userRequestedStop) {
+          if (webSpeechActive && !userRequestedStop) {
             try {
               recognition.start();
               return;
             } catch (err) {
-              // Fall through to clean stopped state if restart is disallowed
+              // Fall through to stopped state
             }
           }
 
-          isListening = false;
+          webSpeechActive = false;
           syncUI();
         };
       }
 
       /**
-       * Starts voice recognition.
+       * Sends recorded audio blob to Groq's OpenAI-compatible Whisper endpoint.
        */
-      function startListening() {
-        if (!recognition || isListening) return;
+      async function sendAudioToGroqWhisper(audioBlob) {
+        const apiKey = groqApiKeyInput.value.trim();
+        const model = groqModelSelect.value || 'whisper-large-v3-turbo';
 
-        // Sync finalizedText with any manual edits the user typed into the textarea
-        finalizedText = transcriptBox.value;
-        currentInterimText = '';
-        userRequestedStop = false;
-        recognition.lang = languageSelect.value || navigator.language || 'en-US';
+        groqTranscribing = true;
+        badgeGroqWhisper.textContent = `Transcribing (${model})…`;
+        badgeGroqWhisper.classList.remove('hidden');
+        syncUI();
+
+        const formData = new FormData();
+        const ext = audioBlob.type.includes('mp4') ? 'm4a' : 'webm';
+        formData.append('file', audioBlob, `recording.${ext}`);
+        formData.append('model', model);
+        formData.append('response_format', 'verbose_json');
+
+        // Pass optional 2-letter ISO-639-1 language hint only if user explicitly selected one
+        const selectedLocale = languageSelect.value;
+        if (selectedLocale) {
+          const isoLang = selectedLocale.split('-')[0].toLowerCase();
+          if (isoLang) {
+            formData.append('language', isoLang);
+          }
+        }
+
+        const startTime = performance.now();
 
         try {
-          recognition.start();
+          const response = await fetch(GROQ_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: formData,
+          });
+
+          const elapsedMs = Math.round(performance.now() - startTime);
+
+          if (!response.ok) {
+            let errDetail = `HTTP ${response.status}`;
+            try {
+              const errJson = await response.json();
+              if (errJson.error && errJson.error.message) {
+                errDetail = errJson.error.message;
+              }
+            } catch (_) {
+              // Ignore JSON parse errors on error payload
+            }
+            throw new Error(errDetail);
+          }
+
+          const data = await response.json();
+          const transcript = (data.text || '').trim();
+          if (transcript) {
+            groqFinalizedText = joinSegments(groqFinalizedText, transcript);
+          }
+
+          const detectedLang = data.language ? ` • Lang: ${data.language}` : '';
+          badgeGroqWhisper.textContent = `${elapsedMs} ms${detectedLang} • ${model}`;
+          badgeGroqWhisper.classList.remove('hidden');
         } catch (err) {
-          // Handle rare InvalidStateError if already starting
-          console.warn('SpeechRecognition start warning:', err);
+          badgeGroqWhisper.textContent = 'Transcription failed';
+          badgeGroqWhisper.classList.remove('hidden');
+          showAlert(
+            'error',
+            'Groq Whisper API Error',
+            err.message || 'Could not reach Groq Whisper endpoint.'
+          );
+        } finally {
+          groqTranscribing = false;
+          syncUI();
         }
       }
 
       /**
-       * Stops active voice recognition while preserving existing text.
+       * Starts recording/listening on all selected methods.
        */
-      function stopListening() {
-        if (!recognition || !isListening) return;
-        userRequestedStop = true;
-        isListening = false;
-        try {
-          recognition.stop();
-        } catch (err) {
-          console.warn('SpeechRecognition stop warning:', err);
+      async function startListening() {
+        if (isListening) return;
+        hideAlert();
+
+        const selected = getSelectedMethods();
+        if (selected.length === 0) {
+          showAlert(
+            'warning',
+            'No Transcription Method Selected',
+            'Please check at least one transcription method above before starting the microphone.'
+          );
+          return;
         }
+
+        const useWebSpeech = selected.includes('web-speech');
+        const useGroq = selected.includes('groq-whisper');
+
+        if (useGroq && !groqApiKeyInput.value.trim()) {
+          showAlert(
+            'error',
+            'Groq API Key Required',
+            'Enter your free Groq API key (gsk_...) in the configuration bar above to transcribe with Groq Whisper.'
+          );
+          groqApiKeyInput.focus();
+          return;
+        }
+
+        if (useWebSpeech && !SpeechRecognitionAPI) {
+          showAlert(
+            'error',
+            'Web Speech API Unsupported',
+            'Your browser does not support SpeechRecognition. Uncheck Browser Web Speech API or use Chrome, Edge, or Safari.'
+          );
+          return;
+        }
+
+        userRequestedStop = false;
+
+        // Start Groq MediaRecorder if selected
+        if (useGroq) {
+          try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(mediaStream);
+
+            mediaRecorder.ondataavailable = (event) => {
+              if (event.data && event.data.size > 0) {
+                audioChunks.push(event.data);
+              }
+            };
+
+            mediaRecorder.onstop = () => {
+              if (mediaStream) {
+                mediaStream.getTracks().forEach((track) => track.stop());
+                mediaStream = null;
+              }
+              groqRecordingActive = false;
+              if (audioChunks.length > 0) {
+                const mimeType = mediaRecorder.mimeType || 'audio/webm';
+                const audioBlob = new Blob(audioChunks, { type: mimeType });
+                audioChunks = [];
+                sendAudioToGroqWhisper(audioBlob);
+              } else {
+                syncUI();
+              }
+            };
+
+            groqFinalizedText = transcriptGroqWhisper.value;
+            mediaRecorder.start();
+            groqRecordingActive = true;
+            badgeGroqWhisper.textContent = 'Recording audio…';
+            badgeGroqWhisper.classList.remove('hidden');
+          } catch (err) {
+            showAlert(
+              'error',
+              'Microphone Access Blocked',
+              'Could not start audio recording for Groq Whisper. Check browser microphone permissions.'
+            );
+            return;
+          }
+        }
+
+        // Start Browser Web Speech API if selected
+        if (useWebSpeech && recognition) {
+          webFinalizedText = transcriptWebSpeech.value;
+          webInterimText = '';
+          recognition.lang = languageSelect.value || navigator.language || 'en-US';
+          try {
+            recognition.start();
+          } catch (err) {
+            console.warn('SpeechRecognition start warning:', err);
+          }
+        }
+
         syncUI();
       }
 
       /**
-       * Stops listening (if active) and clears all transcribed text.
+       * Stops all active recording/listening methods.
+       */
+      function stopListening() {
+        userRequestedStop = true;
+
+        if (recognition && webSpeechActive) {
+          webSpeechActive = false;
+          try {
+            recognition.stop();
+          } catch (err) {
+            console.warn('SpeechRecognition stop warning:', err);
+          }
+        }
+
+        if (mediaRecorder && groqRecordingActive) {
+          try {
+            mediaRecorder.stop();
+          } catch (err) {
+            console.warn('MediaRecorder stop warning:', err);
+            groqRecordingActive = false;
+          }
+        }
+
+        syncUI();
+      }
+
+      /**
+       * Stops active sessions and clears all transcripts.
        */
       function resetAll() {
         userRequestedStop = true;
-        if (recognition && isListening) {
-          isListening = false;
+
+        if (recognition && webSpeechActive) {
+          webSpeechActive = false;
           try {
             recognition.abort();
           } catch (err) {
@@ -575,9 +1152,29 @@
           }
         }
 
-        finalizedText = '';
-        currentInterimText = '';
-        transcriptBox.value = '';
+        if (mediaRecorder && groqRecordingActive) {
+          audioChunks = [];
+          groqRecordingActive = false;
+          try {
+            mediaRecorder.onstop = () => {
+              if (mediaStream) {
+                mediaStream.getTracks().forEach((track) => track.stop());
+                mediaStream = null;
+              }
+            };
+            mediaRecorder.stop();
+          } catch (err) {
+            console.warn('MediaRecorder abort warning:', err);
+          }
+        }
+
+        webFinalizedText = '';
+        webInterimText = '';
+        groqFinalizedText = '';
+        transcriptWebSpeech.value = '';
+        transcriptGroqWhisper.value = '';
+        badgeWebSpeech.classList.add('hidden');
+        badgeGroqWhisper.classList.add('hidden');
         hideAlert();
         syncUI();
       }
@@ -592,38 +1189,42 @@
       });
 
       stopBtn.addEventListener('click', stopListening);
-
       resetBtn.addEventListener('click', resetAll);
 
-      // Keep internal finalizedText aligned if the user manually edits the textarea
-      transcriptBox.addEventListener('input', () => {
-        if (!isListening) {
-          finalizedText = transcriptBox.value;
+      transcriptWebSpeech.addEventListener('input', () => {
+        if (!webSpeechActive) {
+          webFinalizedText = transcriptWebSpeech.value;
           syncUI();
         }
       });
 
-      // If language changes while actively listening, restart seamlessly with the new language
+      transcriptGroqWhisper.addEventListener('input', () => {
+        if (!groqRecordingActive) {
+          groqFinalizedText = transcriptGroqWhisper.value;
+          syncUI();
+        }
+      });
+
       languageSelect.addEventListener('change', () => {
         if (!recognition) return;
         recognition.lang = languageSelect.value || navigator.language || 'en-US';
-        if (isListening) {
+        if (webSpeechActive) {
           userRequestedStop = false;
           try {
-            recognition.stop(); // onend will automatically restart with updated recognition.lang
+            recognition.stop();
           } catch (err) {
             console.warn('Language switch restart warning:', err);
           }
         }
       });
 
-      // Copy button using execCommand fallback for seamless iframe compatibility
       copyBtn.addEventListener('click', () => {
-        const textToCopy = transcriptBox.value;
+        const targetBox = getActiveTextarea();
+        const textToCopy = targetBox.value;
         if (!textToCopy.trim()) return;
 
-        transcriptBox.select();
-        transcriptBox.setSelectionRange(0, textToCopy.length);
+        targetBox.select();
+        targetBox.setSelectionRange(0, textToCopy.length);
 
         try {
           document.execCommand('copy');
@@ -636,13 +1237,12 @@
           console.warn('Copy failed:', err);
         }
 
-        // Clear text selection highlight after copying
         window.getSelection()?.removeAllRanges();
       });
 
       // Boot application
       initSpeechRecognition();
-      syncUI();
+      updateMethodSelectionUI();
     })();
   </script>
 </body>
